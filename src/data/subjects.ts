@@ -1,8 +1,10 @@
 export interface Subject {
   id: string;
   name: string;
-  /** Максимальное количество посещений */
+  /** Максимальное количество засчитываемых посещений */
   lessons: number;
+  /** За какие занятия ставятся баллы посещения (по умолчанию — лекции) */
+  attendanceKind?: 'lecture' | 'practice';
   link?: string;
 }
 
@@ -16,6 +18,7 @@ export const SUBJECTS: Subject[] = [
     id: 'english',
     name: 'Иностранный язык',
     lessons: 14,
+    attendanceKind: 'practice',
     link: 'https://pulse.mirea.ru/services/merged-disciplines/58a149d1-508a-4648-bb84-85c2a9b04f08/b9654f10-8b9f-47fe-ab51-d7f06d939c95?termIndex=2',
   },
   { id: 'isb', name: 'Информационные системы в бизнесе', lessons: 7 },

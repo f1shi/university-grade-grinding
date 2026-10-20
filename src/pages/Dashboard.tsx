@@ -32,7 +32,7 @@ export default function Dashboard() {
     <>
       <h1>Обзор</h1>
       <p className="muted">
-        За каждый предмет: до {ATTENDANCE_MAX} баллов за посещение (по умолчанию — все посещены, прогул вычитает долю) и до{' '}
+        За каждый предмет: до {ATTENDANCE_MAX} баллов за посещение лекций (у иностранного — практик; по умолчанию всё посещено) и до{' '}
         {SEMINAR_MAX} баллов за работу на семинарах.
       </p>
 
@@ -50,6 +50,7 @@ export default function Dashboard() {
             <tr>
               <th>Предмет</th>
               <th>Прогулы</th>
+              <th>Можно ещё</th>
               <th>Посещение</th>
               <th>Семинары</th>
               <th>Итого</th>
@@ -59,7 +60,8 @@ export default function Dashboard() {
             {rows.map(({ s, p }) => (
               <tr key={s.id}>
                 <td><Link to={`/subject/${s.id}`}>{s.name}</Link></td>
-                <td className={p.missedCount ? 'bad' : ''}>{p.missedCount} / {s.lessons}</td>
+                <td className={p.missedCount ? 'bad' : ''}>{p.missedCount} / {p.totalLessons}</td>
+                <td>{p.freeSkips}</td>
                 <td>{fmt(p.attendance)} / {ATTENDANCE_MAX}</td>
                 <td>{fmt(p.seminar)} / {SEMINAR_MAX}</td>
                 <td className="total-cell">

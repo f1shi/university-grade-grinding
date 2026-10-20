@@ -148,5 +148,35 @@ label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color:
   .stats { grid-template-columns: 1fr; }
   .summary { flex-direction: column; align-items: stretch; gap: 10px; }
   .table { font-size: 13px; }
-  .table th:nth-child(2), .table td:nth-child(2) { display: none; }
+  .table th:nth-child(2), .table td:nth-child(2), .table th:nth-child(3), .table td:nth-child(3) { display: none; }
+}
+
+.week-nav { display: flex; align-items: center; gap: 10px; margin: 14px 0 6px; flex-wrap: wrap; }
+.week-title { min-width: 0; }
+.legend { margin: 4px 0 0; font-size: 13px; }
+.kind { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; flex-shrink: 0; }
+.kind.lecture { background: #2563eb; color: #fff; }
+.kind.practice { background: #0d9488; color: #fff; }
+.lesson-time { width: 90px; font-size: 13px; flex-shrink: 0; }
+.lesson-list li.past { opacity: .65; }
+.today-card { border-color: var(--accent); }
+details.card summary { cursor: pointer; font-weight: 600; }
+details.card[open] summary { margin-bottom: 10px; }
+
+@media (max-width: 760px) {
+  .week-nav { display: grid; grid-template-columns: auto 1fr auto; }
+  .week-title { text-align: center; font-size: 14px; }
+  .week-nav > button:nth-of-type(3) { grid-column: 1 / -1; }
+  .lesson-list li { flex-wrap: nowrap; gap: 8px; padding: 8px 4px; align-items: flex-start; }
+  .lesson-list li .lesson-name { min-width: 0; font-size: 14px; }
+  .lesson-time { width: 62px; font-size: 12px; }
+  .lesson-date { width: 64px; font-size: 13px; }
+  .lesson-list .check { font-size: 0; gap: 0; }
+  .lesson-list .check input { width: 20px; height: 20px; }
+  .lesson-list .check::after { content: 'прогул'; font-size: 11px; color: var(--muted); margin-left: 4px; }
+}
+@media (max-width: 760px) {
+  .lesson-list li .lesson-name { flex: 1 1 0; overflow-wrap: anywhere; }
+  .lesson-list .check { flex-direction: column; flex-shrink: 0; }
+  .lesson-list .check::after { margin-left: 0; }
 }

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ATTENDANCE_MAX, SEMINAR_MAX, SUBJECTS, type Subject } from './data/subjects';
+import { attendanceLessons } from './data/timetable';
 
 export interface ScoreEntry {
   id: string;
@@ -28,9 +29,8 @@ export interface Task {
 }
 
 export interface SubjectState {
-  /** Даты занятий, заданные вручную (перекрывают общие) */
-  dates: string[];
-  missed: boolean[];
+  /** id занятий, которые прогулял */
+  missed: Record<string, boolean>;
   scores: ScoreEntry[];
 }
 
@@ -42,30 +42,21 @@ export interface AppState {
 }
 
 export interface SharedData {
-  schedule: Record<string, string[]>;
   tasks: Task[];
 }
 
-const STORAGE_KEY = 'ugg-state-v1';
-
-const emptySubject = (s: Subject): SubjectState => ({
-  dates: Array(s.lessons).fill(''),
-  missed: Array(s.lessons).fill(false),
-  scores: [],
-});
+const STORAGE_KEY = 'ugg-state-v2';
 
 function normalize(raw: Partial<AppState> | null): AppState {
   const subjects: Record<string, SubjectState> = {};
   for (const s of SUBJECTS) {
     const prev = raw?.subjects?.[s.id];
-    const base = emptySubject(s);
-    subjects[s.id] = prev
-      ? {
-          dates: base.dates.map((d, i) => prev.dates?.[i] ?? d),
-          missed: base.missed.map((m, i) => prev.missed?.[i] ?? m),
-          scores: prev.scores ?? [],
-        }
-      : base;
+    const missed = prev?.missed;
+    subjects[s.id] = {
+      // старый формат (массив по номерам занятий) не переносим
+      missed: missed && !Array.isArray(missed) ? missed : {},
+      scores: prev?.scores ?? [],
+    };
   }
   return {
     version: 1,
@@ -96,7 +87,7 @@ const StoreContext = createContext<StoreValue | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(load);
-  const [shared, setShared] = useState<SharedData>({ schedule: {}, tasks: [] });
+  const [shared, setShared] = useState<SharedData>({ tasks: [] });
 
   useEffect(() => {
     try {
@@ -109,7 +100,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}data/shared.json`, { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setShared({ schedule: d.schedule ?? {}, tasks: d.tasks ?? [] }))
+      .then((d) => d && setShared({ tasks: d.tasks ?? [] }))
       .catch(() => {});
   }, []);
 
@@ -140,19 +131,36 @@ export function updateSubject(
   return { ...state, subjects: { ...state.subjects, [id]: fn(state.subjects[id]) } };
 }
 
-/** Дата занятия: своя, если задана, иначе общая из репозитория */
-export function lessonDate(state: AppState, shared: SharedData, subjectId: string, i: number) {
-  return state.subjects[subjectId]?.dates[i] || shared.schedule[subjectId]?.[i] || '';
+export function toggleMissed(state: AppState, subjectId: string, lessonId: string): AppState {
+  return updateSubject(state, subjectId, (ss) => {
+    const missed = { ...ss.missed };
+    if (missed[lessonId]) delete missed[lessonId];
+    else missed[lessonId] = true;
+    return { ...ss, missed };
+  });
 }
 
+/**
+ * Посещение: засчитывается не больше subject.lessons занятий.
+ * Если занятий в семестре больше максимума, лишние можно пропустить без потерь.
+ */
 export function calcPoints(subject: Subject, st: SubjectState) {
-  const missedCount = st.missed.filter(Boolean).length;
-  const perLesson = ATTENDANCE_MAX / subject.lessons;
-  const attendance = Math.max(0, ATTENDANCE_MAX - missedCount * perLesson);
+  const lessons = attendanceLessons(subject.id);
+  const missedCount = lessons.filter((l) => st.missed[l.id]).length;
+  const attended = lessons.length - missedCount;
+  const needed = Math.min(subject.lessons, lessons.length) || subject.lessons;
+  const perLesson = ATTENDANCE_MAX / needed;
+  const attendance = (Math.min(attended, needed) / needed) * ATTENDANCE_MAX;
+  /** Сколько ещё можно прогулять без потери баллов */
+  const freeSkips = Math.max(0, attended - needed);
   const seminarRaw = st.scores.reduce((sum, e) => sum + (Number(e.points) || 0), 0);
   const seminar = Math.min(SEMINAR_MAX, seminarRaw);
   return {
     missedCount,
+    totalLessons: lessons.length,
+    needed,
+    attended,
+    freeSkips,
     perLesson,
     attendance,
     seminar,

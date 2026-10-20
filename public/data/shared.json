@@ -1,16 +1,4 @@
 {
-  "schedule": {
-    "asd": [],
-    "db": [],
-    "english": [],
-    "isb": [],
-    "matan": [],
-    "law": [],
-    "project": [],
-    "ai": [],
-    "tip": [],
-    "web": []
-  },
   "tasks": [
     {
       "id": "example-1",

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { ATTENDANCE_MAX, SEMINAR_MAX, subjectById, type Subject } from '../data/subjects';
-import { calcPoints, fmt, fmtDate, lessonDate, todayIso, updateSubject, useStore } from '../store';
+import { LESSONS, attendanceLessons } from '../data/timetable';
+import { calcPoints, fmt, fmtDate, todayIso, updateSubject, useStore } from '../store';
+import { LessonRow } from './Schedule';
 import Bar from './Bar';
 import Tasks from './Tasks';
 
@@ -27,7 +29,10 @@ export default function SubjectPage() {
         <div className="card stat">
           <div className="muted">Посещение</div>
           <div className="big">{fmt(p.attendance)}<small> / {ATTENDANCE_MAX}</small></div>
-          <div className="muted">прогулов: {p.missedCount} (−{fmt(p.perLesson)} за каждый)</div>
+          <div className="muted">
+            прогулов: {p.missedCount}
+            {p.freeSkips > 0 ? ` · ещё можно без потерь: ${p.freeSkips}` : ` · −${fmt(p.perLesson)} за каждый`}
+          </div>
         </div>
         <div className="card stat">
           <div className="muted">Семинары</div>
@@ -55,75 +60,32 @@ export default function SubjectPage() {
 }
 
 function Attendance({ subject }: { subject: Subject }) {
-  const { state, shared, update } = useStore();
-  const st = state.subjects[subject.id];
-  const [first, setFirst] = useState('');
-  const [step, setStep] = useState(1);
-
-  const set = (fn: Parameters<typeof updateSubject>[2]) => update((s) => updateSubject(s, subject.id, fn));
-
-  const generate = () => {
-    if (!first) return;
-    const start = new Date(first + 'T00:00:00');
-    set((ss) => ({
-      ...ss,
-      dates: ss.dates.map((_, i) => {
-        const d = new Date(start);
-        d.setDate(d.getDate() + i * 7 * step);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      }),
-    }));
-  };
-
-  const today = todayIso();
+  const { state } = useStore();
+  const lessons = attendanceLessons(subject.id);
+  const practices = LESSONS.filter((l) => l.subjectId === subject.id && l.kind !== lessons[0]?.kind);
+  const p = calcPoints(subject, state.subjects[subject.id]);
+  const kindName = subject.attendanceKind === 'practice' ? 'практик' : 'лекций';
 
   return (
     <>
       <div className="card">
-        <h3>Заполнить даты</h3>
-        <div className="row">
-          <label>Первое занятие <input type="date" value={first} onChange={(e) => setFirst(e.target.value)} /></label>
-          <label>
-            Повтор
-            <select value={step} onChange={(e) => setStep(Number(e.target.value))}>
-              <option value={1}>каждую неделю</option>
-              <option value={2}>раз в 2 недели</option>
-            </select>
-          </label>
-          <button onClick={generate} disabled={!first}>Сгенерировать</button>
-          <button className="secondary" onClick={() => set((ss) => ({ ...ss, dates: ss.dates.map(() => '') }))}>
-            Сбросить свои даты
-          </button>
-        </div>
-      </div>
-
-      <div className="card">
-        <p className="muted">По умолчанию все занятия отмечены как посещённые. Отметьте те, что прогуляли.</p>
+        <p className="muted">
+          В семестре {p.totalLessons} {kindName}, для полных {ATTENDANCE_MAX} баллов нужно посетить {p.needed}.
+          По умолчанию все занятия считаются посещёнными — отметьте те, что прогуляли.
+          {p.freeSkips > 0 && <> Можно ещё прогулять <b>{p.freeSkips}</b> без потери баллов.</>}
+        </p>
         <ul className="lesson-list">
-          {st.missed.map((missed, i) => {
-            const date = lessonDate(state, shared, subject.id, i);
-            return (
-              <li key={i} className={`${missed ? 'missed' : ''} ${date === today ? 'today' : ''}`}>
-                <span className="lesson-num">№{i + 1}</span>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => set((ss) => ({ ...ss, dates: ss.dates.map((d, j) => (j === i ? e.target.value : d)) }))}
-                />
-                <span className="muted lesson-name">{date ? fmtDate(date) : 'дата не задана'}</span>
-                <label className="check">
-                  <input
-                    type="checkbox"
-                    checked={missed}
-                    onChange={() => set((ss) => ({ ...ss, missed: ss.missed.map((m, j) => (j === i ? !m : m)) }))}
-                  />
-                  прогулял
-                </label>
-              </li>
-            );
-          })}
+          {lessons.map((l) => <LessonRow key={l.id} lesson={l} showDate />)}
         </ul>
       </div>
+      {practices.length > 0 && (
+        <details className="card">
+          <summary>{subject.attendanceKind === 'practice' ? 'Лекции' : 'Практики (семинары)'} — {practices.length} занятий</summary>
+          <ul className="lesson-list">
+            {practices.map((l) => <LessonRow key={l.id} lesson={l} showDate />)}
+          </ul>
+        </details>
+      )}
     </>
   );
 }
