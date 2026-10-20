@@ -1,0 +1,24 @@
+{
+  "schedule": {
+    "asd": [],
+    "db": [],
+    "english": [],
+    "isb": [],
+    "matan": [],
+    "law": [],
+    "project": [],
+    "ai": [],
+    "tip": [],
+    "web": []
+  },
+  "tasks": [
+    {
+      "id": "example-1",
+      "subjectId": "web",
+      "title": "Пример задания (удалите меня)",
+      "description": "Так выглядит общее задание из репозитория. Файлы кладутся в public/files/<предмет>/ и перечисляются в files.",
+      "deadline": "2026-11-01",
+      "files": [{ "name": "README.txt", "path": "files/web/README.txt" }]
+    }
+  ]
+}
